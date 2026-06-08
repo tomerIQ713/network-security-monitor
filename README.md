@@ -138,7 +138,7 @@ alert_engine.register_handler(slack_handler)
 
 - Python 3.8+
 - No third-party packages required for simulation mode
-- `scapy` (optional) for advanced live capture
+- `scapy` 
 - Root / Administrator privileges for raw socket capture
 
 ---
