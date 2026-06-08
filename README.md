@@ -62,7 +62,7 @@ python main.py --dashboard /tmp/my_report.html
 Live packet capture uses raw sockets and requires root:
 
 ```bash
-sudo python main.py
+python main.py <seconds>
 ```
 
 If run without root, the sniffer automatically falls back to simulation mode.
