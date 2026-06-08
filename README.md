@@ -1,4 +1,4 @@
-# 🛡 Cybersecurity Lab Tool
+# Cybersecurity Lab Tool
 
 A modular Python-based network security monitoring system for controlled-environment simulation, analysis, and visualization of cyber threats.
 
