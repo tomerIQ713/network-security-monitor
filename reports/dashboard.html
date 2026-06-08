@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>CyberLab Security Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Sora:wght@300;400;600&display=swap');
+
+  :root {
+    --bg: #0d1117; --surface: #161b22; --surface2: #1c2128;
+    --border: #30363d; --text: #e6edf3; --muted: #7d8590;
+    --accent: #58a6ff; --critical: #e24b4a; --high: #ef9f27;
+    --medium: #378add; --low: #639922; --green: #3fb950;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Sora', sans-serif; font-size: 14px; line-height: 1.6; }
+
+  .header {
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 16px 32px; display: flex; align-items: center;
+    justify-content: space-between; position: sticky; top: 0; z-index: 100;
+  }
+  .header-left { display: flex; align-items: center; gap: 14px; }
+  .logo {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, #1f6feb, #58a6ff);
+    border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px;
+  }
+  .header h1 { font-size: 16px; font-weight: 600; letter-spacing: 0.5px; }
+  .header .sub { font-size: 11px; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+  .status-pill {
+    display: flex; align-items: center; gap: 6px;
+    background: #16231a; border: 1px solid #238636; color: var(--green);
+    padding: 4px 12px; border-radius: 20px; font-size: 12px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .pulse {
+    width: 7px; height: 7px; background: var(--green); border-radius: 50%;
+    animation: pulse 1.4s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(0.85)} }
+
+  .main { padding: 28px 32px; max-width: 1400px; margin: 0 auto; }
+  .section-title {
+    font-size: 11px; font-weight: 600; color: var(--muted);
+    letter-spacing: 1.5px; text-transform: uppercase; margin: 28px 0 14px;
+  }
+
+  .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 4px; }
+  .metric-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 18px 20px; position: relative; overflow: hidden;
+  }
+  .metric-card::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; }
+  .metric-card.critical::before { background: var(--critical); }
+  .metric-card.high::before    { background: var(--high); }
+  .metric-card.medium::before  { background: var(--medium); }
+  .metric-card.total::before   { background: var(--accent); }
+  .metric-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+  .metric-value { font-size: 32px; font-weight: 600; font-family: 'JetBrains Mono', monospace; }
+  .metric-card.critical .metric-value { color: var(--critical); }
+  .metric-card.high     .metric-value { color: var(--high); }
+  .metric-card.medium   .metric-value { color: var(--medium); }
+  .metric-card.total    .metric-value { color: var(--accent); }
+  .metric-sub { font-size: 11px; color: var(--muted); margin-top: 6px; }
+
+  .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; }
+  .chart-title { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 18px; }
+  .chart-wrap { position: relative; height: 220px; }
+
+  .table-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .table-header {
+    padding: 14px 20px; border-bottom: 1px solid var(--border);
+    font-size: 12px; font-weight: 600; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 1px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th {
+    padding: 10px 16px; text-align: left; font-size: 11px; font-weight: 600;
+    color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px;
+    border-bottom: 1px solid var(--border); background: var(--surface2);
+  }
+  td {
+    padding: 10px 16px; border-bottom: 1px solid #1c2128;
+    font-family: 'JetBrains Mono', monospace; font-size: 12px;
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--surface2); }
+  .badge {
+    display: inline-block; padding: 2px 8px; border-radius: 4px;
+    font-size: 11px; font-weight: 600; font-family: 'JetBrains Mono', monospace; letter-spacing: 0.5px;
+  }
+  .empty-row td { text-align: center; color: var(--muted); padding: 24px; }
+
+  .footer {
+    text-align: center; padding: 24px; color: var(--muted);
+    font-size: 11px; font-family: 'JetBrains Mono', monospace;
+    border-top: 1px solid var(--border); margin-top: 40px;
+  }
+  #last-updated { color: var(--muted); font-size: 11px; font-family: 'JetBrains Mono', monospace; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="logo">🛡</div>
+    <div>
+      <h1>CyberLab Security Dashboard</h1>
+      <div class="sub" id="last-updated">Loading data…</div>
+    </div>
+  </div>
+  <div class="status-pill"><div class="pulse"></div>MONITORING ACTIVE</div>
+</div>
+
+<div class="main">
+  <div class="section-title">Alert Summary</div>
+  <div class="metrics">
+    <div class="metric-card total">
+      <div class="metric-label">Total Alerts</div>
+      <div class="metric-value" id="m-total">—</div>
+      <div class="metric-sub" id="m-unacked">— unacknowledged</div>
+    </div>
+    <div class="metric-card critical">
+      <div class="metric-label">Critical</div>
+      <div class="metric-value" id="m-crit">—</div>
+      <div class="metric-sub">Requires immediate action</div>
+    </div>
+    <div class="metric-card high">
+      <div class="metric-label">High</div>
+      <div class="metric-value" id="m-high">—</div>
+      <div class="metric-sub">Investigate promptly</div>
+    </div>
+    <div class="metric-card medium">
+      <div class="metric-label">Medium</div>
+      <div class="metric-value" id="m-med">—</div>
+      <div class="metric-sub">Monitor closely</div>
+    </div>
+  </div>
+
+  <div class="section-title">Threat Intelligence</div>
+  <div class="charts-grid">
+    <div class="chart-card">
+      <div class="chart-title">Alerts by Category</div>
+      <div class="chart-wrap"><canvas id="catChart" role="img" aria-label="Alerts by category"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Severity Distribution</div>
+      <div class="chart-wrap"><canvas id="sevChart" role="img" aria-label="Severity distribution"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Top Attacker IPs</div>
+      <div class="chart-wrap"><canvas id="attackerChart" role="img" aria-label="Top attackers"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Alert Severity Radar</div>
+      <div class="chart-wrap"><canvas id="radarChart" role="img" aria-label="Severity radar"></canvas></div>
+    </div>
+  </div>
+
+  <div class="section-title">Port Scan Results</div>
+  <div class="table-card">
+    <div class="table-header"><span id="scan-header">Scanned Hosts</span></div>
+    <table>
+      <thead><tr><th>Target</th><th>OS Guess</th><th>Open Ports / Services</th><th>Risk</th></tr></thead>
+      <tbody id="scan-body"><tr class="empty-row"><td colspan="4">Loading…</td></tr></tbody>
+    </table>
+  </div>
+
+  <div class="section-title">Recent Security Events</div>
+  <div class="table-card">
+    <div class="table-header"><span id="alert-header">Alert Feed</span></div>
+    <table>
+      <thead><tr><th>Time</th><th>Severity</th><th>Source</th><th>Category</th><th>Description</th><th>Ack</th></tr></thead>
+      <tbody id="alert-body"><tr class="empty-row"><td colspan="6">Loading…</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="footer" id="footer-ts">CyberLab Security Monitoring Platform</div>
+
+<script>
+// ── Chart instances (created once, updated in place) ──────────────────────
+const GRID  = 'rgba(48,54,61,0.8)';
+const TEXT  = '#7d8590';
+const SEV_COLORS = { CRITICAL:'#e24b4a', HIGH:'#ef9f27', MEDIUM:'#378add', LOW:'#639922' };
+
+function makeBar(id, labels, values, color, borderColor, horizontal=false) {
+  return new Chart(document.getElementById(id), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{ label:'Alerts', data: values,
+        backgroundColor: color, borderColor: borderColor,
+        borderWidth: 1.5, borderRadius: 4 }]
+    },
+    options: {
+      indexAxis: horizontal ? 'y' : 'x',
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks:{color:TEXT,font:{size:11}}, grid:{color:GRID} },
+        y: { ticks:{color:TEXT,font:{size:11,family:horizontal?'JetBrains Mono':undefined}},
+             grid:{color: horizontal?'transparent':GRID} }
+      }
+    }
+  });
+}
+
+const catChart = makeBar('catChart', [], [], 'rgba(88,166,255,0.25)', '#58a6ff');
+const attackerChart = makeBar('attackerChart', [], [], 'rgba(226,75,74,0.3)', '#e24b4a', true);
+
+const sevChart = new Chart(document.getElementById('sevChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Critical','High','Medium','Low'],
+    datasets: [{ data:[0,0,0,0],
+      backgroundColor:['#e24b4a','#ef9f27','#378add','#639922'],
+      borderColor:'#161b22', borderWidth:3 }]
+  },
+  options: {
+    responsive:true, maintainAspectRatio:false, cutout:'60%',
+    plugins: { legend:{ position:'right',
+      labels:{color:TEXT,font:{size:11},boxWidth:12,padding:12} } }
+  }
+});
+
+const radarChart = new Chart(document.getElementById('radarChart'), {
+  type: 'radar',
+  data: {
+    labels: [],
+    datasets: [{ label:'Alert Count', data:[],
+      backgroundColor:'rgba(88,166,255,0.15)',
+      borderColor:'#58a6ff', borderWidth:2, pointBackgroundColor:'#58a6ff' }]
+  },
+  options: {
+    responsive:true, maintainAspectRatio:false,
+    plugins: { legend:{ display:false } },
+    scales: { r: {
+      grid:{color:GRID},
+      ticks:{color:TEXT,font:{size:10},backdropColor:'transparent'},
+      pointLabels:{color:TEXT,font:{size:10}},
+      angleLines:{color:GRID}
+    }}
+  }
+});
+
+// ── Helpers ───────────────────────────────────────────────────────────────
+function badgeHtml(level) {
+  const c = SEV_COLORS[level] || '#888';
+  return `<span class="badge" style="background:${c}20;color:${c};border:1px solid ${c}40">${level}</span>`;
+}
+
+function fmtTime(ts) {
+  const d = new Date(ts * 1000);
+  return d.toTimeString().slice(0,8);
+}
+
+function updateChart(chart, labels, data) {
+  chart.data.labels = labels;
+  chart.data.datasets[0].data = data;
+  chart.update('none'); // 'none' skips animation — smooth in-place update
+}
+
+// ── Apply fetched data to DOM + charts ────────────────────────────────────
+function applyData(payload) {
+  const st  = payload.stats  || {};
+  const state = payload.state || {};
+
+  // Metric cards
+  document.getElementById('m-total').textContent  = st.total_alerts ?? '—';
+  document.getElementById('m-unacked').textContent = `${st.unacknowledged ?? '—'} unacknowledged`;
+  document.getElementById('m-crit').textContent   = st.critical_count ?? '—';
+  document.getElementById('m-high').textContent   = st.high_count ?? '—';
+  document.getElementById('m-med').textContent    = st.medium_count ?? '—';
+
+  // Category chart
+  const cats = st.by_category || {};
+  updateChart(catChart, Object.keys(cats), Object.values(cats));
+
+  // Severity doughnut
+  sevChart.data.datasets[0].data = [
+    st.critical_count||0, st.high_count||0, st.medium_count||0, st.low_count||0
+  ];
+  sevChart.update('none');
+
+  // Attacker chart
+  const attackers = (st.top_attackers || []).slice(0, 8);
+  updateChart(attackerChart, attackers.map(x=>x[0]), attackers.map(x=>x[1]));
+
+  // Radar — reuse category data
+  const catKeys = Object.keys(cats).slice(0, 7);
+  const catVals = Object.values(cats).slice(0, 7);
+  radarChart.data.labels = catKeys;
+  radarChart.data.datasets[0].data = catVals;
+  radarChart.update('none');
+
+  // Scan table
+  const scans = payload.scan_results || [];
+  document.getElementById('scan-header').textContent = `Scanned Hosts (${scans.length})`;
+  const scanBody = document.getElementById('scan-body');
+  if (scans.length === 0) {
+    scanBody.innerHTML = '<tr class="empty-row"><td colspan="4">No scan results</td></tr>';
+  } else {
+    scanBody.innerHTML = scans.map(s => {
+      const risk = s.risk || {};
+      const lvl  = risk.risk_level || 'LOW';
+      const c    = SEV_COLORS[lvl] || '#888';
+      const ports = (s.open_ports || []).map(p => `${p.port}/${p.service}`).join(', ') || '—';
+      return `<tr>
+        <td>${s.target||''}</td>
+        <td>${s.os_guess||'Unknown'}</td>
+        <td>${ports}</td>
+        <td>${badgeHtml(lvl)}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  // Alert feed table
+  const alerts = (payload.recent_alerts || []).slice().reverse().slice(0, 20);
+  document.getElementById('alert-header').textContent = `Alert Feed (last ${alerts.length} events)`;
+  const alertBody = document.getElementById('alert-body');
+  if (alerts.length === 0) {
+    alertBody.innerHTML = '<tr class="empty-row"><td colspan="6">No alerts recorded</td></tr>';
+  } else {
+    alertBody.innerHTML = alerts.map(a => {
+      const c   = SEV_COLORS[a.severity] || '#888';
+      const ts  = fmtTime(a.timestamp);
+      const ack = a.acknowledged ? '<span style="color:#3fb950">✓</span>' : '';
+      const desc = (a.description || '').slice(0, 80);
+      return `<tr>
+        <td style="font-size:12px">${ts}</td>
+        <td>${badgeHtml(a.severity)}</td>
+        <td>${a.source||''}</td>
+        <td>${a.category||''}</td>
+        <td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${desc}</td>
+        <td>${ack}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  // Timestamps
+  const now = new Date().toLocaleString();
+  document.getElementById('last-updated').textContent = `Last updated: ${now}`;
+  document.getElementById('footer-ts').textContent =
+    `CyberLab Security Monitoring Platform  |  Updated: ${now}  |  All data collected in controlled environment`;
+}
+
+// ── Polling loop ──────────────────────────────────────────────────────────
+async function poll() {
+  try {
+    // Cache-bust so the browser always fetches the latest file
+    const res = await fetch(`data.json?_=${Date.now()}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const payload = await res.json();
+    applyData(payload);
+  } catch (err) {
+    document.getElementById('last-updated').textContent = `⚠ fetch error: ${err.message}`;
+  }
+}
+
+poll();                         // Immediate first load
+setInterval(poll, 10000);       // Then every 10 seconds
+</script>
+</body>
+</html>
